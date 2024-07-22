@@ -8,6 +8,7 @@ import sympy as sym
 
 from .differentiation_utils import differentiate_model, differentiate_model_symbolic
 from .dmd import dmd
+import warnings
 
 warnings.filterwarnings("ignore",category=FutureWarning)
 
@@ -67,7 +68,7 @@ class DataDrivenLinearization:
             initial_matrix = np.random.rand(self.dimension, self.dimension)
         if initial_transformation is None:
             initial_transformation = np.random.rand(self.dimension, self.n_features - self.dimension)
-        if initial_transformation == 'zero':
+        elif isinstance(initial_transformation, str) and initial_transformation == 'zero':
             initial_transformation = np.zeros((self.dimension, self.n_features - self.dimension))
         initial_guess = np.concatenate((initial_matrix.ravel(),
                                          initial_transformation.ravel()))
@@ -231,7 +232,7 @@ class DataDrivenLinearization:
             initial_matrix = None, 
             initial_transformation = None, 
             method = 'simple',
-            method_optimization = 'BFGS', 
+            method_optimization = 'default', 
             verbose = False):
         """
         Fit the transformation H and the linear model, such that H(X)_{n+1} \approx A H(X)_n. The method can be either 'simple', when the squared difference between the left and right hand side of the equation is minimized, or 'with_inverse' if an additional term is added to fit the inverse transformation. The optimization is performed using the scipy minimize function.
@@ -254,8 +255,9 @@ class DataDrivenLinearization:
             #print('Initial cost: ', costfunction(initial_guess))
             if verbose:
                 print('Initial cost: ', costfunction(initial_guess))
-    
-            result = minimize(costfunction, initial_guess, method = method, jac = jac, tol = 1e-12, options = {'maxiter': 6000, 'gtol':1e-7})
+            if method_optimization == 'default':
+                method_optimization = 'L-BFGS-B'
+            result = minimize(costfunction, initial_guess, method = method_optimization, jac = jac, tol = 1e-12, options = {'maxiter': 6000, 'gtol':1e-7})
             if verbose:
                 print(result)
                 print('Final cost: ', costfunction(result.x))
@@ -271,6 +273,8 @@ class DataDrivenLinearization:
     
             initial_guess = self._prepare_initial_guess(initial_matrix, initial_transformation)
             initial_guess = np.concatenate((initial_guess, initial_guess[int(self.dimension**2):]))
+            if method_optimization == 'default':
+                method_optimization = 'trf'
             costfunction = lambda y : self._objective_function_with_inverse_lsq(y, x, 
                                                                                 nonlinear_features,
                                                                                   alpha = alpha)
@@ -278,14 +282,14 @@ class DataDrivenLinearization:
             if verbose:
                 print('Initial cost: ', np.linalg.norm(costfunction(initial_guess))**2)
 
-            result = least_squares(costfunction, initial_guess, method = method, ftol=1e-12,loss='huber')
+            result = least_squares(costfunction, initial_guess, method = method_optimization, ftol=1e-12, loss='huber')
             if verbose:
                 print(result)
                 print('Final cost: ', np.linalg.norm(costfunction(result.x))**2)
 
             A, H, H_inv = self._unpack_matrix_and_transformation_inverse(result.x)
             self.linear_model = A
-            self.transformation_coefficients = H # this only contains the nonlinear part of the transformation
+            self.transformation_coefficients = H # this contains all the coefficients of the transformation
             v, w = np.linalg.eig(A)
             self.transform_to_nondiagonal = w
             self.transform_to_diagonal = np.linalg.inv(w)
@@ -301,7 +305,7 @@ class DataDrivenLinearization:
                   alpha = 0., initial_matrix = None, lr = 1e-3,
                     initial_transformation = None, device_type = 'cpu'):
         """
-        Alternative implementation of DDL using pytorch. Fit the transformation H and the linear model, such that H(X)_{n+1} \approx A H(X)_n. The method can be either 'simple', when the squared difference between the left and right hand side of the equation is minimized, or 'with_inverse' if an additional term is added to fit the inverse transformation. The optimization is performed gradient descent in pytorch. 
+        Alternative implementation of DDL using pytorch. Fit the transformation H and the linear model, such that H(X)_{n+1} \approx A H(X)_n. The optimization is performed using gradient descent in pytorch. 
 
         Parameters:
         x (list of torch.tensors): List of state matrices.
@@ -318,8 +322,8 @@ class DataDrivenLinearization:
         nonlinear_features = self.poly.fit_transform(x.T)
         nonlinear_features_tensor = torch.tensor(nonlinear_features, device = device, dtype = floatype)    
 
-        dmd = dmd(x)
-        A0 = dmd.coef_#torch.tensor(dmd.coef_, requires_grad = True)
+        dmd_model = dmd([x])
+        A0 = dmd_model.coef_
         H0 = np.zeros((self.dimension, self.n_features - self.dimension))
         initial_guess = np.concatenate((A0.ravel(),
                                          H0.ravel()))
@@ -368,13 +372,13 @@ class DataDrivenLinearization:
         if self.transformation_coefficients is None:
             raise ValueError('The model has not been fitted yet. Call fit() first.')
         nonlinear_features = self.poly.fit_transform(x.T)
-        return np.matmul(self.transformation_coefficients, nonlinear_features.T).T # to return the same shape as x (self.dimension, n_samples)
+        return (np.matmul(self.transformation_coefficients, nonlinear_features.T)).T # to return the same shape as x (self.dimension, n_samples)
     
     def inverse_transform(self, x):
         if self.inverse_transformation_model is None:
             raise ValueError('The inverse transformation has not been fitted yet. Call fit_inverse() first.')
         nonlinear_features = self.poly.fit_transform(x.T)#[:,self.dimension:]
-        return self.inverse_transformation_model.predict(nonlinear_features).T
+        return self.inverse_transformation_model.predict(nonlinear_features)
 
 
     def predict(self, x, iterations, with_transform = True):
