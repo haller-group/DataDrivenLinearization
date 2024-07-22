@@ -15,14 +15,7 @@ setup(
     author_email="bkaszas@ethz.ch",
     url="https://github.com/haller-group/data_driven_linearization",  # Update with your repository URL
     packages=find_packages(),
-    install_requires=[
-        "numpy>=1.18.0",
-        "scipy>=1.4.0",
-        "scikit-learn>=0.22.0",
-        "torch>=1.4.0",
-        "sympy>=1.5.1",
-        "matplotlib>=3.1.0",
-    ],
+
     extras_require={
         "dev": [
             "pytest>=5.3.5",

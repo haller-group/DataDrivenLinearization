@@ -256,7 +256,7 @@ class DataDrivenLinearization:
             if verbose:
                 print('Initial cost: ', costfunction(initial_guess))
             if method_optimization == 'default':
-                method_optimization = 'L-BFGS-B'
+                method_optimization = 'BFGS'
             result = minimize(costfunction, initial_guess, method = method_optimization, jac = jac, tol = 1e-12, options = {'maxiter': 6000, 'gtol':1e-7})
             if verbose:
                 print(result)
