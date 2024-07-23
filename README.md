@@ -31,7 +31,7 @@ $$
 are recorded and that the system posesses a low-dimensional, attracting invariant (slow) manifold. 
 Such manifolds are guaranteed to arise as slow spectral submanifolds (SSMs) at stable hyperbolic fixed points of the system, which is illustrated by the following figure. 
 
-![slowssm](docs/slow_ssm.png)
+![slowssm](docs/dmd.png)
 
 Denoting the parametrization of the $d$-dimensional slow SSM $\mathcal{W}(E)$ as $\boldsymbol{\varphi}=(\varphi_1, \varphi_2, ..., \varphi_d)$, the reduced dynamics can be written as 
 
@@ -44,6 +44,7 @@ If the available data is sufficiently close to the slow SSM, DDL seeks a polynom
 $$
 \boldsymbol{\varphi} = \boldsymbol{\kappa}(\boldsymbol{\gamma}) = \boldsymbol{\gamma} + \sum_{|\mathbf{k}|=2}^{r} l_{\mathbf{k}}\boldsymbol{\gamma}^{\mathbf{k}}, \quad \boldsymbol{\gamma}^{\mathbf{k}}:=\gamma_1^{k_1}\gamma_2^{k_2}...\gamma_d^{k_d},
 $$
+
 such that the dynamics becomes linear, i.e.,
 
 $$
@@ -86,8 +87,12 @@ transform, derivative, variables = differentiate_model_symbolic(d.poly,
 ```
 
 Further examples can be found in the ```examples/``` folder. 
-### References 
+## References 
+Please consider citing the following paper, if you are using the code:
+
 [1] G. Haller & B. Kaszás, Data-Driven Linearization of Dynamical Systems, to appear in Nonlinear Dynamics, (2024) [arXiv:2407.08177](https://arxiv.org/abs/2407.08177)
+
+Additional references on the use of SSMs for nonlinear model reduction:
 
 [2] G. Haller & S. Ponsioen, Exact model reduction by a slow-fast decomposition of nonlinear mechanical systems. Nonlinear Dynamics 90 (2017) 617-647
 
