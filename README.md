@@ -1,7 +1,7 @@
 # Data-Driven Linearization (DDL)
 
 Dynamic Mode Decomposition (DMD) and its variants, such as extended DMD (EDMD), are
-broadly used to fit simple linear models to dynamical systems from observable data. A justification for DMD as a local, leading-order reduced model was given by Haller and Kaszás (2024) [1]. This was achieved by constructing linearizing transformations for the dynamics in attracting slow spectral submanifolds (SSMs), that have been defined by [2]. These attracting SSMs have been successfully used for nonlinear model reduction in data- and equation-driven settings by [3, 4, 5], most notably using the ```Matlab``` package [SSMLearn](https://github.com/haller-group/SSMLearn).
+broadly used to fit simple linear models to dynamical systems from observable data. A justification for DMD as a local, leading-order reduced model was given by Haller and Kaszás (2024) [1]. This was achieved by constructing linearizing transformations for the dynamics in attracting slow spectral submanifolds (SSMs), that have been defined by [2]. These attracting SSMs have been successfully used for nonlinear model reduction in data- and equation-driven settings by [3, 4, 5], most notably using the ```MATLAB``` package [SSMLearn](https://github.com/haller-group/SSMLearn).
 
 
 The arguments of Haller and Kaszás (2024) [1] also lead to a new algorithm, data-driven
@@ -28,7 +28,7 @@ We assume that observations of trajectories of the dynamical system
 $$
 \dot{\mathbf{x}} = \mathbf{f}(\mathbf{x}), \quad \mathbf{x}\in \mathbb{R}^n
 $$
-are recorded and that the system posesses a low-dimensional, attracting invariant (slow) manifold. 
+are recorded and that the system possesses a low-dimensional, attracting invariant (slow) manifold. 
 Such manifolds are guaranteed to arise as slow spectral submanifolds (SSMs) at stable hyperbolic fixed points of the system, which is illustrated by the following figure. 
 
 ![slowssm](docs/dmd.png)
@@ -50,6 +50,7 @@ such that the dynamics becomes linear, i.e.,
 $$
 \dot{\boldsymbol{\gamma}} = \mathbf{B}\boldsymbol{\gamma}.
 $$
+
 This transformation is obtained via regression _purely_ from observed data, without any knowledge of the underlying dynamical system. Therefore, DDL can be viewed as a higher-order refinement of linearization methods based on DMD. 
 
 For more information see the manuscript [1], which can be found under ```docs/haller_kaszas2024.pdf```. 
@@ -75,15 +76,15 @@ model.fit(training_data, # training_data is a list of np.arrays with shapes (2, 
            method = 'with_inverse',  method_optimization = 'trf', verbose = True)
 ```
 
-Specifying ```method='with_inverse``` allows DDL to fit the linearizing transformation and its inverse simultaneously. After fitting the model, we can extract these transformations to be used for further analysis as 
+Specifying ```method='with_inverse'``` allows DDL to fit the linearizing transformation and its inverse simultaneously. After fitting the model, we can extract these transformations to be used for further analysis as 
 
 ```python
 from data_driven_linearization.differentiation_utils import differentiate_model_symbolic
-inverse_transform, inverse_derivative, variables = differentiate_model_symbolic(d.poly, 
-                                                                                d.inverse_transformation_model.coef_)
+inverse_transform, inverse_derivative, variables = differentiate_model_symbolic(model.poly, 
+                                                                              model.inverse_transformation_model.coef_)
 
-transform, derivative, variables = differentiate_model_symbolic(d.poly,
-                                                                d.transformation_coefficients)
+transform, derivative, variables = differentiate_model_symbolic(model.poly,
+                                                                model.transformation_coefficients)
 ```
 
 Further examples can be found in the ```examples/``` folder. 
