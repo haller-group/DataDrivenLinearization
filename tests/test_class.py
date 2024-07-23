@@ -97,10 +97,11 @@ def test_ddl_class_transform_predict():
     d.fit(trajectory, initial_transformation='zero')
     transformed = d.transform(trajectory[0])
     predicted = d.predict(trajectory[0][:,0], 1000)
+
     eigs_true = np.linalg.eig(expm(True_A))[0]
     eigs_predicted = np.linalg.eig(d.linear_model)[0]
     assert np.allclose(np.log(eigs_true), np.log(eigs_predicted), atol=1e-5)
-    assert np.allclose(np.linalg.norm(predicted - transformed.T, axis = 0), 0, atol = 1e-2)
+    assert np.allclose(np.linalg.norm(predicted - transformed, axis = 0), 0, atol = 1e-2)
     
 
 def test_ddl_class_score():
@@ -129,10 +130,12 @@ def test_ddl_class_fit_inverse():
         traj.append(expm(True_A) @ traj[-1])
     trajectory = [np.array(traj).T]
     d.fit(trajectory)
-    d.fit_inverse(trajectory)
     transformed = d.transform(trajectory[0])
-    inverse_transformed = d.inverse_transform(transformed.T)
-    assert np.allclose(trajectory[0].T, inverse_transformed, atol=1e-5)
+    d.fit_inverse(trajectory)
+    
+    inverse_transformed = d.inverse_transform(transformed)
+
+    assert np.allclose(trajectory[0], inverse_transformed, atol=1e-5)
 
 
 
@@ -172,3 +175,7 @@ def test_differentiate_model():
        [  0,  1,  0, 0,  0, 1,  0,  -1,  0]])
     derivative_mtx = differentiate_model(poly, coeff, data.T)
     assert np.allclose(derivative_mtx, jacobian_exact(data[:,0], data[:,1]))
+
+if __name__ == "__main__":
+    test_ddl_class_fit_inverse()
+    test_ddl_class_transform_predict()

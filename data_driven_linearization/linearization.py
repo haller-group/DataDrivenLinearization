@@ -21,7 +21,7 @@ class DataDrivenLinearization:
     dimension (int): Dimension of the state space.
     degree (int): Degree of polynomial features.
     poly (PolynomialFeatures): Polynomial features object.
-    n_features (int): Number of features.
+    n_features (int): Number of polynomial features.
     linear_model (np.ndarray): Linear model coefficients.
     transformation_coefficients (np.ndarray): Transformation coefficients.
     transform_to_diagonal (np.ndarray): Transformation to diagonal matrix.
@@ -34,9 +34,8 @@ class DataDrivenLinearization:
         Initialize the DataDrivenLinearization class.
 
         Parameters:
-        dimension (int): Dimension of the state space.
+        dimension (int): Dimension of the phase space.
         degree (int): Degree of polynomial features.
-        approximate (bool): Whether to use approximate methods.
         """
         self.degree = degree
         self.poly = PolynomialFeatures(degree = degree, include_bias = False) # will assume that the origin is a fixed point
@@ -168,7 +167,7 @@ class DataDrivenLinearization:
         trajectory_errors = np.concatenate(trajectory_errors)
         inverse_errors = np.concatenate(inverse_errors)
         
-        return np.concatenate([trajectory_errors, inverse_errors])#np.sum(trajectory_errors) + alpha * np.linalg.norm(H[:, self.dimension:].ravel())**2 # only penalize nonlinear part 
+        return np.concatenate([trajectory_errors, inverse_errors])
       
 
 
@@ -238,7 +237,7 @@ class DataDrivenLinearization:
         Fit the transformation H and the linear model, such that H(X)_{n+1} \approx A H(X)_n. The method can be either 'simple', when the squared difference between the left and right hand side of the equation is minimized, or 'with_inverse' if an additional term is added to fit the inverse transformation. The optimization is performed using the scipy minimize function.
 
         Parameters:
-        x (list of np.ndarray): List of state matrices.
+        x (list of np.ndarray): List of state matrices. They should have shape (n_dimensions, n_samples)
         y (np.ndarray): Redundant, kept for compatibility with sklearn.
         alpha (float): Regularization parameter.
         initial_matrix (np.ndarray): Initial matrix for the linear model.
@@ -308,7 +307,7 @@ class DataDrivenLinearization:
         Alternative implementation of DDL using pytorch. Fit the transformation H and the linear model, such that H(X)_{n+1} \approx A H(X)_n. The optimization is performed using gradient descent in pytorch. 
 
         Parameters:
-        x (list of torch.tensors): List of state matrices.
+        x (list of torch.tensors): List of state matrices. They should have shape (n_dimensions, n_samples)
         y : Redundant, kept for compatibility with sklearn.
         alpha (float): Regularization parameter.
         initial_matrix (torch.tensor): Initial matrix for the linear model.
@@ -345,14 +344,15 @@ class DataDrivenLinearization:
         return
     
     def fit_inverse(self, x, y = None):
+        
         if self.linear_model is None:
             raise ValueError('The model has not been fitted yet. Call fit() first.')
         X = np.concatenate(x, axis = 1)
         transformed_coordinates = self.transform(X)
         self.inverse_transformation_model = LinearRegression(fit_intercept=False)
-        nonlinear_features_transformed = self.poly.fit_transform(transformed_coordinates)[:,self.dimension:] # fit only the nonlinear part
+        nonlinear_features_transformed = self.poly.fit_transform(transformed_coordinates.T)[:,self.dimension:] # fit only the nonlinear part
         self.inverse_transformation_model.fit(
-            nonlinear_features_transformed, X.T - transformed_coordinates)
+            nonlinear_features_transformed, X.T - transformed_coordinates.T)
         self.inverse_transformation_model.coef_ = np.hstack((np.eye(self.dimension), self.inverse_transformation_model.coef_))
         self.inverse_transformation_model.n_features_in_ = self.inverse_transformation_model.coef_.shape[1] # to avoid a warning
         return 
@@ -372,13 +372,13 @@ class DataDrivenLinearization:
         if self.transformation_coefficients is None:
             raise ValueError('The model has not been fitted yet. Call fit() first.')
         nonlinear_features = self.poly.fit_transform(x.T)
-        return (np.matmul(self.transformation_coefficients, nonlinear_features.T)).T # to return the same shape as x (self.dimension, n_samples)
+        return np.matmul(self.transformation_coefficients, nonlinear_features.T) # to return the same shape as x (self.dimension, n_samples)
     
     def inverse_transform(self, x):
         if self.inverse_transformation_model is None:
             raise ValueError('The inverse transformation has not been fitted yet. Call fit_inverse() first.')
         nonlinear_features = self.poly.fit_transform(x.T)#[:,self.dimension:]
-        return self.inverse_transformation_model.predict(nonlinear_features)
+        return self.inverse_transformation_model.predict(nonlinear_features).T
 
 
     def predict(self, x, iterations, with_transform = True):
@@ -387,11 +387,12 @@ class DataDrivenLinearization:
         if self.linear_model is None:
             raise ValueError('The model has not been fitted yet. Call fit() first.')
         if with_transform:
-            x = self.transform(x).T
+            x = self.transform(x)
         predictions = [x]
         for _ in range(iterations):
             predictions.append(np.matmul(self.linear_model, predictions[-1]))
         return np.squeeze(np.array(predictions)).T
+    
     def compute_symbolic_transforms(self):
         if self.transformation_coefficients is None:
             raise ValueError('The model has not been fitted yet. Call fit() first.')
